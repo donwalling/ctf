@@ -1,9 +1,9 @@
 
 import argparse, os, time, json, sys, re, pathlib, importlib
 
-from arena.arena import Arena
-from teams.team_alpha import Team as TeamAlpha
-from teams.team_bravo import Team as TeamBravo
+from ctf.arena import Arena
+from ctf.teams.team_alpha import Team as TeamAlpha
+from ctf.teams.team_bravo import Team as TeamBravo
 
 def _clear():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -180,9 +180,9 @@ def bot_init_team_main():
         return
 
     template = f"""
-from agents.agent_scout import ScoutAgent
-from agents.agent_attacker import AttackerAgent
-from agents.agent_defender import DefenderAgent
+from ctf.agents.agent_scout import ScoutAgent
+from ctf.agents.agent_attacker import AttackerAgent
+from ctf.agents.agent_defender import DefenderAgent
 
 class Team:
     def __init__(self):

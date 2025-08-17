@@ -1,4 +1,18 @@
-
 [build-system]
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "ctf"
+version = "0.2.1"
+requires-python = ">=3.9"
+
+[project.scripts]
+ctf-sim = "ctf.cli.sim:main"
+
+[tool.setuptools.packages.find]
+include = ["ctf*"]
+
+[project.optional-dependencies]
+render = ["pygame>=2.5.0"]
+dev = ["pytest", "pygame>=2.5.0"]

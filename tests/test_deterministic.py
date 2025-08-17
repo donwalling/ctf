@@ -1,7 +1,7 @@
 
-from arena.arena import Arena
-from teams.team_alpha import Team as TeamAlpha
-from teams.team_bravo import Team as TeamBravo
+from ctf.arena import Arena
+from ctf.teams.team_alpha import Team as TeamAlpha
+from ctf.teams.team_bravo import Team as TeamBravo
 
 def test_capture_sequence_auto_pickup_and_score():
     arena = Arena(teams=[TeamAlpha(), TeamBravo()])

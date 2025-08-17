@@ -1,7 +1,7 @@
 
-from agents.agent_scout import ScoutAgent
-from agents.agent_attacker import AttackerAgent
-from agents.agent_defender import DefenderAgent
+from ctf.agents.agent_scout import ScoutAgent
+from ctf.agents.agent_attacker import AttackerAgent
+from ctf.agents.agent_defender import DefenderAgent
 
 class Team:
     def __init__(self):
