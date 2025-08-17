@@ -1,0 +1,8 @@
+
+PyYAML
+# Optional for renderer (local window):
+# pygame
+# Optional for real LLM coaching:
+# openai
+# Optional for tests:
+# pytest

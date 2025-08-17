@@ -1,0 +1,3 @@
+# LLM coach configuration
+# openai_api_key: "sk-..."
+model: "gpt-4o-mini"

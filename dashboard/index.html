@@ -1,0 +1,171 @@
+
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Multi‑Agent CTF Dashboard</title>
+  <style>
+    body { background:#111; color:#f0f0f0; font-family: ui-sans-serif, system-ui, -apple-system; }
+    #wrap { max-width: 1100px; margin: 24px auto; display:grid; grid-template-columns: 2fr 1fr; gap:16px; }
+    canvas { background:#1e1e22; border:1px solid #444; display:block; }
+    .row { display:flex; gap:12px; align-items:center; margin:8px 0; flex-wrap:wrap; }
+    .badge { padding:4px 8px; border-radius:6px; background:#222; border:1px solid #333; }
+    small { color:#aaa; }
+    button { background:#222; color:#eee; border:1px solid #444; border-radius:6px; padding:6px 10px; cursor:pointer; }
+    button:hover { background:#2a2a2a; }
+    #events { background:#1a1a1d; border:1px solid #333; border-radius:8px; padding:8px; max-height:600px; overflow:auto; }
+    .evt { padding:6px 8px; margin:4px 0; border-left:4px solid #444; background:#111; border-radius:4px; }
+    .evt.tag { border-color:#6cf; }
+    .evt.pickup_flag { border-color:#fd6; }
+    .evt.capture { border-color:#8f8; }
+    .legend { display:flex; gap:8px; align-items:center; }
+    .dot { width:14px; height:14px; border-radius:50%; display:inline-block; border:2px solid transparent; }
+    .ring { border-color:#46b0ff; } /* alpha ring */
+    .ringB { border-color:#ff6e5a; } /* bravo ring */
+  </style>
+</head>
+<body>
+  <div style="max-width:1100px;margin:16px auto;">
+    <h2>Multi‑Agent CTF — Live Dashboard</h2>
+    <div class="row">
+      <div class="badge">Turn: <span id="turn">0</span></div>
+      <div class="badge">Alpha: <span id="alpha">0</span></div>
+      <div class="badge">Bravo: <span id="bravo">0</span></div>
+      <small>Run <code>ctf-sim --delay 0.2</code> to update <code>logs/state.json</code></small>
+    </div>
+    <div class="row">
+      <button id="startBtn">Start</button>
+      <button id="pauseBtn">Pause</button>
+      <button id="stepBtn">Step</button>
+      <div class="legend">
+        <span>Legend:</span>
+        <span class="dot" style="background:#5ac878"></span> Scout
+        <span class="dot" style="background:#ffaa3c"></span> Attacker
+        <span class="dot" style="background:#a078ff"></span> Defender
+        <span class="dot ring"></span> Team Alpha ring
+        <span class="dot ringB"></span> Team Bravo ring
+      </div>
+    </div>
+  </div>
+
+  <div id="wrap">
+    <canvas id="cv" width="900" height="600"></canvas>
+    <div>
+      <h3>Recent Events</h3>
+      <div id="events"></div>
+    </div>
+  </div>
+
+  <script>
+    const cv = document.getElementById('cv');
+    const ctx = cv.getContext('2d');
+
+    const CELL = 36;
+    const PADDING = 16;
+    const COLORS = {
+      bg: '#1e1e22',
+      grid: '#3c3c42',
+      wall: '#777',
+      alpha: '#46b0ff',
+      bravo: '#ff6e5a',
+      flag: '#ffd700',
+      alpha_base: '#3c78ff',
+      bravo_base: '#ff503c',
+      text: '#e6e6eb',
+      scout: '#5ac878',
+      attacker: '#ffaa3c',
+      defender: '#a078ff'
+    };
+
+    let rows = 9, cols = 15;
+    let timer = null;
+
+    function drawGrid() {
+      ctx.fillStyle = COLORS.bg;
+      ctx.fillRect(0,0,cv.width, cv.height);
+      ctx.strokeStyle = COLORS.grid;
+      for (let r=0;r<=rows;r++) {
+        const y = PADDING + 40 + r*CELL;
+        ctx.beginPath(); ctx.moveTo(PADDING, y); ctx.lineTo(PADDING + cols*CELL, y); ctx.stroke();
+      }
+      for (let c=0;c<=cols;c++) {
+        const x = PADDING + c*CELL;
+        ctx.beginPath(); ctx.moveTo(x, PADDING + 40); ctx.lineTo(x, PADDING + 40 + rows*CELL); ctx.stroke();
+      }
+    }
+
+    async function fetchState() {
+      try {
+        const res = await fetch('/logs/state.json?_=' + Date.now());
+        if (!res.ok) return null;
+        return res.json();
+      } catch (e) { return null; }
+    }
+
+    function drawWorld(state) {
+      drawGrid();
+      const ox = PADDING, oy = PADDING + 40;
+
+      for (const [team, f] of Object.entries(state.flags || {})) {
+        const [fr, fc] = f.position;
+        const cx = ox + fc*CELL + CELL/2;
+        const cy = oy + fr*CELL + CELL/2;
+        ctx.fillStyle = COLORS.flag;
+        ctx.beginPath(); ctx.arc(cx, cy, CELL/4, 0, Math.PI*2); ctx.fill();
+      }
+
+      for (const a of state.agents || []) {
+        const [r,c] = a.position;
+        const cx = ox + c*CELL + CELL/2;
+        const cy = oy + r*CELL + CELL/2;
+        const fill = COLORS[a.role] || '#ccc';
+        const ring = (a.team === 'Team Alpha') ? COLORS.alpha : COLORS.bravo;
+        ctx.beginPath(); ctx.arc(cx, cy, CELL/3 + 2, 0, Math.PI*2); ctx.fillStyle = ring; ctx.fill();
+        ctx.beginPath(); ctx.arc(cx, cy, CELL/3, 0, Math.PI*2); ctx.fillStyle = fill; ctx.fill();
+        ctx.fillStyle = '#000';
+        ctx.font = 'bold 14px system-ui';
+        const letter = ({scout:'S', attacker:'T', defender:'D'})[a.role] || '?';
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(letter, cx, cy);
+      }
+    }
+
+    function renderEvents(state) {
+      const box = document.getElementById('events');
+      box.innerHTML = '';
+      const evts = (state.recent_events || []).slice().reverse();
+      for (const e of evts) {
+        const div = document.createElement('div');
+        div.className = 'evt ' + e.type;
+        let txt = '';
+        if (e.type === 'tag') txt = `⚔️ t${e.tick}: ${e.agent} tagged ${e.target}`;
+        else if (e.type === 'pickup_flag') txt = `🏁 t${e.tick}: ${e.agent} picked up the flag`;
+        else if (e.type === 'capture') txt = `🎉 t${e.tick}: ${e.agent} captured for ${e.team}`;
+        else txt = `t${e.tick}: ${e.agent} -> ${e.type}`;
+        div.textContent = txt;
+        box.appendChild(div);
+      }
+    }
+
+    async function tick() {
+      const state = await fetchState();
+      if (state) {
+        document.getElementById('turn').textContent = state.turn ?? '0';
+        document.getElementById('alpha').textContent = (state.scores || {})['Team Alpha'] ?? 0;
+        document.getElementById('bravo').textContent = (state.scores || {})['Team Bravo'] ?? 0;
+        drawWorld(state);
+        renderEvents(state);
+      }
+    }
+
+    const startBtn = document.getElementById('startBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const stepBtn = document.getElementById('stepBtn');
+    startBtn.onclick = () => { if (!timer) { timer = setInterval(tick, 300); tick(); } };
+    pauseBtn.onclick = () => { if (timer) { clearInterval(timer); timer = null; } };
+    stepBtn.onclick = () => { tick(); };
+
+    drawGrid();
+  </script>
+</body>
+</html>
