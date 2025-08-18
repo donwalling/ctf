@@ -1,8 +1,8 @@
 
 import os, time, json, argparse
-from arena.arena import Arena
-from teams.team_alpha import Team as TeamAlpha
-from teams.team_bravo import Team as TeamBravo
+from ctf.arena import Arena
+from ctf.teams.team_alpha import Team as TeamAlpha
+from ctf.teams.team_bravo import Team as TeamBravo
 
 def clear_console():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -32,7 +32,7 @@ def simulate(max_turns=60, delay=0.2, render=False):
         if evt: recent_events.append(evt)
 
     if render:
-        from renderer import run_pygame_loop
+        from ctf.renderer import run_pygame_loop
         def step_once(turn):
             actions = []
             for ag in arena.agents:
