@@ -32,7 +32,7 @@ def simulate(max_turns=60, delay=0.2, render=False):
         if evt: recent_events.append(evt)
 
     if render:
-        from renderer import run_pygame_loop
+        from ctf.renderer import run_pygame_loop
         def step_once(turn):
             actions = []
             for ag in arena.agents:

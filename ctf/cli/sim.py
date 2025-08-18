@@ -16,14 +16,7 @@ def main() -> None:
             raise
 
     sim_mod = importlib.import_module("ctf.simulate")
-
-    if hasattr(sim_mod, "run"):
-        sim_mod.run(render=a.render, max_turns=a.max_turns, delay=a.delay)
-    elif hasattr(sim_mod, "main"):
-        sim_mod.main(render=a.render, max_turns=a.max_turns, delay=a.delay)
-    else:
-        sys.stderr.write("ctf.simulate missing run(...) or main(...)\n")
-        sys.exit(2)
+    sim_mod.simulate(render=a.render, max_turns=a.max_turns, delay=a.delay)
 
 if __name__ == "__main__":
     main()
