@@ -4,15 +4,27 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ctf"
-version = "0.2.1"
-requires-python = ">=3.9"
+version = "0.2.2"
+requires-python = ">=3.10"
+dependencies = [
+  # keep core deps here
+]
 
 [project.scripts]
+ctf = "ctf.cli:app"
 ctf-sim = "ctf.cli.sim:main"
+ctf-tournament = "ctf.cli.tournament:main"
+ctf-coach = "ctf.cli.coach:main"
+ctf-coach-mock = "ctf.cli.coach_mock:main"
+ctf-dashboard = "ctf.cli.dashboard:main"
+ctf-recap = "ctf.cli.recap:main"
+ctf-bot = "ctf.cli.bot:main"
+ctf-eval = "ctf.cli.eval:main"
 
 [tool.setuptools.packages.find]
 include = ["ctf*"]
 
 [project.optional-dependencies]
-render = ["pygame>=2.5.0"]
 dev = ["pytest", "pygame>=2.5.0"]
+render = ["pygame>=2.6"]
+coach = ["openai>=1.0"]

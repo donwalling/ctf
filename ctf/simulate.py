@@ -97,10 +97,13 @@ def simulate(max_turns=60, delay=0.2, render=False):
         json.dump(log_data, f, indent=2)
     print(f"\N{OPEN FILE FOLDER} Simulation log saved to 'logs/simulation.json'")
 
-if __name__ == "__main__":
+def main():
     p = argparse.ArgumentParser()
     p.add_argument("--max-turns", type=int, default=60)
     p.add_argument("--delay", type=float, default=0.2)
     p.add_argument("--render", action="store_true")
     args = p.parse_args()
     simulate(max_turns=args.max_turns, delay=args.delay, render=args.render)
+
+if __name__ == "__main__":
+    main()

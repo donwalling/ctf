@@ -1,4 +1,4 @@
-from ctf.simulate import main
+from ctf.tournament import main
 
 if __name__ == "__main__":
     main()
