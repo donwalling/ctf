@@ -35,7 +35,7 @@ def draw_text(screen, font, text, x, y):
     s = font.render(text, True, COLORS["text"])
     screen.blit(s, (x, y))
 
-def draw_world(screen, arena, font, turn, trails, heat_counts, show_heat=True):
+def draw_world(screen, arena, font, turn, trails, heat_counts, show_heat=True, show_trails=True):
     screen.fill(COLORS["bg"])
     rows, cols = arena.rows, arena.cols
     ox, oy = PADDING, PADDING + 40
@@ -73,6 +73,26 @@ def draw_world(screen, arena, font, turn, trails, heat_counts, show_heat=True):
         cy = oy + fr * CELL + CELL // 2
         pygame.draw.circle(screen, COLORS["flag"], (cx, cy), CELL // 4)
 
+# --- Draw agent trails (fading "crumbs") ---
+    if show_trails:
+        for agent in arena.agents:
+            pts = trails.get(agent.state.name, [])
+            print("len " + str(len(pts)))
+            if len(pts) < 2:
+                continue
+            # color by team
+            color = COLORS["alpha"] if agent.state.team == "Team Alpha" else COLORS["bravo"]
+            # convert to pixel coordinates
+            pixel_pts = [(ox + c * CELL + CELL // 2, oy + r * CELL + CELL // 2) for (r, c) in pts]
+            n = len(pixel_pts)
+            # draw small fading dots; older points are more transparent
+            for i, (x, y) in enumerate(pixel_pts):
+                t = (i + 1) / n  # 0..1
+                alpha = int(255 * t)
+                dot = Surface((CELL, CELL), pygame.SRCALPHA)
+                pygame.draw.circle(dot, (*color, alpha), (CELL // 2, CELL // 2), max(2, CELL // 10))
+                screen.blit(dot, (x - CELL // 2, y - CELL // 2))
+
     for agent in arena.agents:
         r, c = agent.state.position
         cx = ox + c * CELL + CELL // 2
@@ -102,7 +122,7 @@ def draw_world(screen, arena, font, turn, trails, heat_counts, show_heat=True):
             txt = f"Event @ t{evt.get('tick','?')}"
         draw_text(screen, font, txt, PADDING, PADDING + 8 + 20)
 
-    draw_text(screen, font, "Space: Pause/Resume   N: Step   H: Toggle Heatmap   C: Clear Trails", PADDING, oy + rows*CELL + 10)
+    draw_text(screen, font, "Space: Pause/Resume   N: Step   H: Toggle Heatmap   T: Toggle Trails   C: Clear Trails", PADDING, oy + rows*CELL + 10)
 
 def run_pygame_loop(arena, step_callback, max_turns=200, delay=0.15):
     rows, cols = arena.rows, arena.cols
@@ -117,6 +137,7 @@ def run_pygame_loop(arena, step_callback, max_turns=200, delay=0.15):
     running = True
     paused = False
     show_heat = True
+    show_trails = True
     turn = 0
     trails = {}
     heat_counts = [[0 for _ in range(cols)] for _ in range(rows)]
@@ -134,6 +155,8 @@ def run_pygame_loop(arena, step_callback, max_turns=200, delay=0.15):
                         step_callback(turn)
                 elif event.key == pygame.K_h:
                     show_heat = not show_heat
+                elif event.key == pygame.K_t:
+                    show_trails = not show_trails
                 elif event.key == pygame.K_c:
                     trails.clear()
                     for r in range(rows):
@@ -152,7 +175,7 @@ def run_pygame_loop(arena, step_callback, max_turns=200, delay=0.15):
             if 0 <= r < rows and 0 <= c < cols:
                 heat_counts[r][c] += 1
 
-        draw_world(screen, arena, font, turn, trails, heat_counts, show_heat=show_heat)
+        draw_world(screen, arena, font, turn, trails, heat_counts, show_heat=show_heat, show_trails=show_trails)
         pygame.display.flip()
         clock.tick(60)
         time.sleep(delay if not paused else 0.02)
