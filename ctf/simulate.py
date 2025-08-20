@@ -18,7 +18,8 @@ def snapshot(arena, turn, teams, recent_events):
              "position": list(a.state.position), "has_flag": a.state.has_flag, "alive": a.state.alive}
             for a in arena.agents
         ],
-        "recent_events": recent_events[-12:]
+        "recent_events": recent_events[-12:],
+        "_last_event": getattr(arena, "_last_event", None)
     }
 
 def simulate(max_turns=60, delay=0.2, render=False):
@@ -27,9 +28,16 @@ def simulate(max_turns=60, delay=0.2, render=False):
     os.makedirs("logs", exist_ok=True)
     log_events = []
     recent_events = []
+    last_evt_key = None
 
     def note(evt):
-        if evt: recent_events.append(evt)
+        nonlocal last_evt_key
+        if not isinstance(evt, dict):
+            return
+        key = (evt.get('tick'), evt.get('type'), evt.get('agent'), evt.get('target'), evt.get('team'))
+        if key != last_evt_key:
+            recent_events.append(evt)
+            last_evt_key = key
 
     if render:
         from ctf.renderer import run_pygame_loop
@@ -48,7 +56,7 @@ def simulate(max_turns=60, delay=0.2, render=False):
             arena._resolve_flag_conditions()
 
             evt = getattr(arena, "_last_event", None)
-            if isinstance(evt, dict) and evt.get("tick")==turn:
+            if isinstance(evt, dict):
                 note(evt)
 
             with open("logs/state.json","w") as f:
@@ -75,7 +83,7 @@ def simulate(max_turns=60, delay=0.2, render=False):
             arena._resolve_flag_conditions()
 
             evt = getattr(arena, "_last_event", None)
-            if isinstance(evt, dict) and evt.get("tick")==turn:
+            if isinstance(evt, dict):
                 note(evt)
 
             with open("logs/state.json","w") as f:
