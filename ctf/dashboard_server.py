@@ -8,6 +8,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         root = os.getcwd()
         path = path.split('?',1)[0].split('#',1)[0]
         path = path.lstrip('/')
+
+        # Special handling for logs directory which is up one level
+        if path.startswith('logs/'):
+            parent_dir = os.path.dirname(root)
+            return os.path.join(parent_dir, path)
+
         return os.path.join(root, path)
 
 def main():
