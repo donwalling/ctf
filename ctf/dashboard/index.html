@@ -3,7 +3,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Multi‑Agent CTF Dashboard</title>
+  <title>CTF Dashboard</title>
   <style>
     body { background:#111; color:#f0f0f0; font-family: ui-sans-serif, system-ui, -apple-system; }
     #wrap { max-width: 1100px; margin: 24px auto; display:grid; grid-template-columns: 2fr 1fr; gap:16px; }
@@ -37,6 +37,7 @@
       <button id="startBtn">Start</button>
       <button id="pauseBtn">Pause</button>
       <button id="stepBtn">Step</button>
+      <label style="margin-left:8px;"><input id="toggle-trails" type="checkbox" checked> Trails</label>
       <div class="legend">
         <span>Legend:</span>
         <span class="dot" style="background:#5ac878"></span> Scout
@@ -61,6 +62,65 @@
     const ctx = cv.getContext('2d');
 
     const CELL = 36;
+    // --- Trails config/state ---
+    const TRAIL_LENGTH = 3;   // number of past points to keep per agent
+    const TRAIL_SKIP = 1;      // 2 or 3 to thin the dots if needed
+    let showTrails = true;     // UI toggle
+    // Map agentName -> [{x, y}]
+    const trails = new Map();
+
+    function clearTrails() {
+      trails.clear();
+    }
+
+    function pushTrailPoint(agentName, x, y) {
+      let arr = trails.get(agentName);
+      if (!arr) {
+        arr = [];
+        trails.set(agentName, arr);
+      }
+      arr.push({ x, y });
+      if (arr.length > TRAIL_LENGTH) arr.shift();
+    }
+
+    function gridToPx(r, c) {
+      const ox = PADDING, oy = PADDING + 40;
+
+      // Build lookup: agent name -> team for trail coloring
+      const teamByName = new Map();
+      for (const a of (state.agents || [])) {
+        const name = a.name || a.id || `${a.team}:${a.role}`;
+        teamByName.set(name, a.team);
+      }
+
+      // Draw trails before agents so heads sit on top
+      drawTrails(ctx, teamByName);
+      return { x: ox + c * CELL + CELL / 2, y: oy + r * CELL + CELL / 2 };
+    }
+
+    function drawTrails(ctx, teamByName) {
+      if (!showTrails) return;
+      // draw small fading dots for each agent's trail
+      for (const [name, pts] of trails.entries()) {
+        if (!pts || pts.length < 2) continue;
+        const team = teamByName.get(name);
+        const color = team === 'Team Bravo' ? COLORS.bravo : COLORS.alpha;
+        const n = pts.length;
+        for (let i = 0; i < n; i += TRAIL_SKIP) {
+          const p = pts[i];
+          const t = (i + 1) / n; // 0..1 older->newer
+          const alpha = t;
+          const radius = Math.max(2, CELL * 0.12);
+          ctx.globalAlpha = alpha;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+          ctx.fillStyle = color;
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+    }
+
     const PADDING = 16;
     const COLORS = {
       bg: '#1e1e22',
@@ -97,7 +157,7 @@
     async function fetchState() {
       try {
         const res = await fetch('/logs/state.json?_=' + Date.now());
-        console.log("result " + res.ok);
+        // console.log("fetch result " + res.ok);
         if (!res.ok) return null;
         return res.json();
       } catch (e) { return null; }
@@ -106,6 +166,16 @@
     function drawWorld(state) {
       drawGrid();
       const ox = PADDING, oy = PADDING + 40;
+
+      // Build lookup: agent name -> team for trail coloring
+      const teamByName = new Map();
+      for (const a of (state.agents || [])) {
+        const name = a.name || a.id || `${a.team}:${a.role}`;
+        teamByName.set(name, a.team);
+      }
+
+      // Draw trails before agents so heads sit on top
+      drawTrails(ctx, teamByName);
 
       for (const [team, f] of Object.entries(state.flags || {})) {
         const [fr, fc] = f.position;
@@ -116,9 +186,12 @@
       }
 
       for (const a of state.agents || []) {
+        const name = a.name || a.id || `${a.team}:${a.role}`;
+
         const [r,c] = a.position;
         const cx = ox + c*CELL + CELL/2;
         const cy = oy + r*CELL + CELL/2;
+        pushTrailPoint(name, cx, cy);
         const fill = COLORS[a.role] || '#ccc';
         const ring = (a.team === 'Team Alpha') ? COLORS.alpha : COLORS.bravo;
         ctx.beginPath(); ctx.arc(cx, cy, CELL/3 + 2, 0, Math.PI*2); ctx.fillStyle = ring; ctx.fill();
@@ -165,6 +238,20 @@
     startBtn.onclick = () => { if (!timer) { timer = setInterval(tick, 300); tick(); } };
     pauseBtn.onclick = () => { if (timer) { clearInterval(timer); timer = null; } };
     stepBtn.onclick = () => { tick(); };
+
+    // Trails toggle checkbox
+    const toggleTrails = document.getElementById('toggle-trails');
+    if (toggleTrails) {
+      toggleTrails.checked = showTrails;
+      toggleTrails.addEventListener('change', (e) => { showTrails = e.target.checked; });
+    }
+    // 'T' hotkey to toggle trails
+    window.addEventListener('keydown', (e) => {
+      if (e.key && e.key.toLowerCase() === 't') {
+        showTrails = !showTrails;
+        if (toggleTrails) toggleTrails.checked = showTrails;
+      }
+    });
 
     drawGrid();
   </script>
