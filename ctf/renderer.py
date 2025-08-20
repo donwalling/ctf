@@ -35,10 +35,17 @@ def draw_text(screen, font, text, x, y):
     s = font.render(text, True, COLORS["text"])
     screen.blit(s, (x, y))
 
-def draw_world(screen, arena, font, turn, trails, heat_counts, show_heat=True, show_trails=True):
+def draw_world(screen, arena, font, turn, trails, heat_counts, show_heat=True, show_trails=3):
     screen.fill(COLORS["bg"])
     rows, cols = arena.rows, arena.cols
-    ox, oy = PADDING, PADDING + 40
+    HEADER_H = 72  # reserved header pixels to prevent overlap with grid
+    ox, oy = PADDING, PADDING + HEADER_H
+
+    # Header background bar
+    header_w = cols * CELL
+    header_surf = Surface((header_w, HEADER_H), pygame.SRCALPHA)
+    header_surf.fill((0, 0, 0, 80))  # subtle translucent overlay
+    screen.blit(header_surf, (PADDING, PADDING))
 
     if show_heat:
         max_count = max((v for row in heat_counts for v in row), default=1)
@@ -74,19 +81,19 @@ def draw_world(screen, arena, font, turn, trails, heat_counts, show_heat=True, s
         pygame.draw.circle(screen, COLORS["flag"], (cx, cy), CELL // 4)
 
 # --- Draw agent trails (fading "crumbs") ---
-    if show_trails:
+    if show_trails > 0:
         for agent in arena.agents:
             pts = trails.get(agent.state.name, [])
-            print("len " + str(len(pts)))
             if len(pts) < 2:
                 continue
             # color by team
             color = COLORS["alpha"] if agent.state.team == "Team Alpha" else COLORS["bravo"]
             # convert to pixel coordinates
             pixel_pts = [(ox + c * CELL + CELL // 2, oy + r * CELL + CELL // 2) for (r, c) in pts]
-            n = len(pixel_pts)
+            sample = pixel_pts[-show_trails:]
+            n = len(sample)
             # draw small fading dots; older points are more transparent
-            for i, (x, y) in enumerate(pixel_pts):
+            for i, (x, y) in enumerate(sample):
                 t = (i + 1) / n  # 0..1
                 alpha = int(255 * t)
                 dot = Surface((CELL, CELL), pygame.SRCALPHA)
@@ -108,7 +115,7 @@ def draw_world(screen, arena, font, turn, trails, heat_counts, show_heat=True, s
 
     scores = arena.scoreboard.snapshot()
     score_str = f"Turn {turn} | Scores: Alpha {scores.get('Team Alpha',0)}  –  Bravo {scores.get('Team Bravo',0)}"
-    draw_text(screen, font, score_str, PADDING, 8)
+    draw_text(screen, font, score_str, PADDING, PADDING + 8)
 
     evt = getattr(arena, "_last_event", None)
     if evt:
@@ -120,9 +127,9 @@ def draw_world(screen, arena, font, turn, trails, heat_counts, show_heat=True, s
             txt = f"🎉  {evt['agent']} captured for {evt.get('team')} (t{evt['tick']})"
         else:
             txt = f"Event @ t{evt.get('tick','?')}"
-        draw_text(screen, font, txt, PADDING, PADDING + 8 + 20)
+        draw_text(screen, font, txt, PADDING, PADDING + 34)
 
-    draw_text(screen, font, "Space: Pause/Resume   N: Step   H: Toggle Heatmap   T: Toggle Trails   C: Clear Trails", PADDING, oy + rows*CELL + 10)
+    draw_text(screen, font, "Space: Pause/Resume   N: Step   H: Toggle Heatmap   T: Cycle Trail Length   C: Clear Trails", PADDING, oy + rows*CELL + 10)
 
 def run_pygame_loop(arena, step_callback, max_turns=200, delay=0.15):
     rows, cols = arena.rows, arena.cols
@@ -137,7 +144,7 @@ def run_pygame_loop(arena, step_callback, max_turns=200, delay=0.15):
     running = True
     paused = False
     show_heat = True
-    show_trails = True
+    show_trails = 3
     turn = 0
     trails = {}
     heat_counts = [[0 for _ in range(cols)] for _ in range(rows)]
@@ -156,7 +163,7 @@ def run_pygame_loop(arena, step_callback, max_turns=200, delay=0.15):
                 elif event.key == pygame.K_h:
                     show_heat = not show_heat
                 elif event.key == pygame.K_t:
-                    show_trails = not show_trails
+                    show_trails = (show_trails + 1) % 4
                 elif event.key == pygame.K_c:
                     trails.clear()
                     for r in range(rows):
