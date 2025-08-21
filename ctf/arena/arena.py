@@ -1,9 +1,12 @@
 
-import time, copy, random
+import time, copy, random, os
 from .map_loader import load_map, simple_map
 from .game_objects import Flag, AgentState
 from .scoreboard import Scoreboard
 from .events import in_bounds, DIRECTIONS
+
+def _clear_console():
+    os.system('cls' if os.name == 'nt' else 'clear')
 
 class Arena:
     def __init__(self, map_spec=None, rows=None, cols=None, teams=None, config=None):
@@ -23,7 +26,12 @@ class Arena:
         self.max_turns = 200 if not config else int(config.get('max_turns', 200))
         self.turn = 0
         self._last_event = None
+        self.events = []
         self._place_agents()
+
+    def _record_event(self, event):
+        self.events.append(event)
+        self._last_event = event
 
     def _place_agents(self):
         start_positions = {'Team Alpha': (4,2), 'Team Bravo': (4,12)}
@@ -53,6 +61,8 @@ class Arena:
             self._auto_pickup_flags()
             self._resolve_flag_conditions()
             if verbose:
+                _clear_console()
+                print(f"--- Turn {self.turn} ---")
                 self.render()
                 time.sleep(0.02)
         return {'scores': self.scoreboard.snapshot(), 'turns': self.turn}
@@ -105,7 +115,7 @@ class Arena:
                 if t!=agent.state.team and tuple(flag.position)==tuple(agent.state.position) and flag.taken_by is None:
                     flag.taken_by=agent.state.name
                     agent.state.has_flag=True
-                    self._last_event={'type':'pickup_flag','agent':agent.state.name,'team':agent.state.team,'tick':self.turn}
+                    self._record_event({'type':'pickup_flag','agent':agent.state.name,'team':agent.state.team,'tick':self.turn})
         elif typ=='drop_flag':
             if agent.state.has_flag:
                 for t,flag in self.flags.items():
@@ -118,7 +128,7 @@ class Arena:
             target=next((a for a in self.agents if a.state.name==target_name),None)
             if target and abs(target.state.position[0]-agent.state.position[0])+abs(target.state.position[1]-agent.state.position[1])==1:
                 self.scoreboard.add(agent.state.team,1)
-                self._last_event={'type':'tag','agent':agent.state.name,'target':target.state.name,'team':agent.state.team,'tick':self.turn}
+                self._record_event({'type':'tag','agent':agent.state.name,'target':target.state.name,'team':agent.state.team,'tick':self.turn})
                 if target.state.has_flag:
                     target.state.has_flag=False
                     own_flag = self.flags[target.state.team]
@@ -132,7 +142,7 @@ class Arena:
                 if t != agent.state.team and tuple(flag.position)==tuple(agent.state.position) and flag.taken_by is None:
                     flag.taken_by = agent.state.name
                     agent.state.has_flag = True
-                    self._last_event={'type':'pickup_flag','agent':agent.state.name,'team':agent.state.team,'tick':self.turn}
+                    self._record_event({'type':'pickup_flag','agent':agent.state.name,'team':agent.state.team,'tick':self.turn})
 
     def _resolve_flag_conditions(self):
         for agent in self.agents:
@@ -140,7 +150,7 @@ class Arena:
                 my_base=self.flags[agent.state.team]
                 if tuple(agent.state.position)==tuple(my_base.position):
                     self.scoreboard.add(agent.state.team,5)
-                    self._last_event={'type':'capture','agent':agent.state.name,'team':agent.state.team,'tick':self.turn}
+                    self._record_event({'type':'capture','agent':agent.state.name,'team':agent.state.team,'tick':self.turn})
                     for t,flag in self.flags.items():
                         if flag.taken_by==agent.state.name:
                             flag.taken_by=None

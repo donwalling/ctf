@@ -18,7 +18,7 @@ def tournament(num_matches=3):
         json.dump({
             "teams":[t.name for t in teams],
             "outcome":{"score":res['scores'],"winner":winner},
-            "events":[]
+            "events": arena.events
         }, open(log_file,"w"), indent=2)
         results.append(res)
     final={}
