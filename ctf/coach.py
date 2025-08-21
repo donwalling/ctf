@@ -1,5 +1,5 @@
 
-import os, json
+import os, json, yaml
 
 def _load_config(path: str):
     cfg = {}
