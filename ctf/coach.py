@@ -1,13 +1,11 @@
 
-import os, json, yaml
+import argparse, json, os
 
 def _load_config(path: str):
     cfg = {}
     try:
-        import yaml  # optional
         if os.path.exists(path):
-            with open(path, 'r', encoding='utf-8') as f:
-                cfg = yaml.safe_load(f) or {}
+            cfg = json.load(open(path, 'r', encoding='utf-8'))
     except Exception:
         cfg = {}
     return cfg
@@ -52,6 +50,8 @@ def coach_with_llm(log: dict, config_path: str = 'config.yaml') -> str:
         "Return a short numbered list of recommendations and one drill."
     )
     user_msg = _summarize_log_for_prompt(log)
+    print("system message:", system_msg)
+    print("user message:", user_msg)
 
     # Preferred: new SDK chat.completions
     try:
@@ -106,3 +106,15 @@ def coach_with_llm(log: dict, config_path: str = 'config.yaml') -> str:
         return resp["choices"][0]["message"]["content"].strip()
     except Exception as e3:
         return f"[coach] Unable to call OpenAI API: {e3}"
+
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument("--log", type=str, default="logs/match_1.json")
+    p.add_argument("--config-path", type=str, default="config.yaml")
+    args = p.parse_args()
+    log = json.load(open(args.log, 'r', encoding='utf-8'))
+    res = coach_with_llm(log, config_path=args.config_path)
+    print(res)
+
+if __name__ == "__main__":
+    main()
